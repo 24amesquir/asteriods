@@ -1,0 +1,173 @@
+import pgzrun
+import math
+import random
+import time
+
+WIDTH = 700
+HEIGHT = 600
+
+background = Actor('bg')
+ship = Actor('image')
+ship.center = WIDTH//2, HEIGHT//2
+buff = Actor('chick')
+buff.center = random.randint(0,WIDTH), random.randint(0,HEIGHT)
+dx = 0
+dy = 0
+shipRadius = (ship.topright[0] - ship.topleft[0])//2
+asteriod = []
+bigdx = []
+bigdy = []
+ro = []
+asteriodlevel = []
+for i in range(4):
+    asteriod.append(Actor('asteriod_big'))
+    bigdx.append(random.uniform(-.75,.75))
+    bigdy.append(random.uniform(-.75,.75))
+    ro.append(random.uniform(+.5, +1))
+    asteriodlevel.append(3)
+    asteriod[i].center = random.uniform(0,700), random.uniform(0,600)
+    if random.randint(0,1)==0:
+        ro[i] = -ro[i]
+    asteriod[i].center = random.randrange(0, WIDTH), random.randrange(0, HEIGHT)
+lasers = []
+ldx = []
+ldy = []
+
+lives = 3
+points = 0
+rapid = False
+def draw():
+    screen.clear()
+    background.draw()
+    buff.draw()
+    
+    if lives <= 0:
+        screen.draw.text("You LOSE!", (20,10))
+    elif len(asteriod) == 0:
+        screen.draw.text("You WIN!", (20,10))
+    else:
+        screen.draw.text(("Lives: "+str(lives)+"Points : " +str(points)), (20,10))
+        ship.draw()
+        for i in range(len(asteriod)):
+            asteriod[i].draw()
+        for i in range(len(lasers)):
+            lasers[i].draw()
+def update():
+    global dx,dy
+    global lives, points, rapid
+    ship.x += dx
+    ship.y += dy
+    if keyboard.left:
+        ship.angle += 2
+    if keyboard.right:
+        ship.angle -= 2
+    pressed = False
+    speed = 0.05
+    if keyboard.up:
+        dx += math.cos((ship.angle+90)*3.1416/180)*speed
+        dy -= math.sin((ship.angle+90)*math.pi/180)*speed
+    if keyboard.down:
+        dx -= math.cos((ship.angle+90)*3.1416/180)*speed
+        dy += math.sin((ship.angle+90)*math.pi/180)*speed
+    if ship.x > WIDTH:
+        ship.x = 0
+    if ship.y > HEIGHT:
+        ship.y = 0
+    if ship.x < 0:
+        ship.x = WIDTH
+    if ship.y < 0:
+        ship.y = HEIGHT
+        
+    for i in range(len(lasers)-1,-1,-1):
+        lasers[i].x += ldx[i]
+        lasers[i].y += ldy[i]
+        if lasers[i].x > WIDTH:
+            lasers[i].x = 0
+        if lasers[i].y > HEIGHT:
+            lasers[i].y = 0
+        if lasers[i].x < 0:
+            lasers[i].x = WIDTH
+        if lasers[i].y < 0:
+            lasers[i].y = HEIGHT
+        
+    for i in range(len(asteriod)):
+        if asteriod[i].collidepoint(ship.center):
+            lives -= 1
+            ship.center = random.randrange(0,WIDTH), random.randrange(0, HEIGHT)
+            dx = 0
+            dy = 0
+        asteriod[i].x += bigdx[i]
+        asteriod[i].y += bigdy[i]
+        asteriod[i].angle += ro[i]
+        if asteriod[i].x > WIDTH:
+            asteriod[i].x = 0
+        if asteriod[i].y > HEIGHT:
+            asteriod[i].y = 0
+        if asteriod[i].x < 0:
+            asteriod[i].x = WIDTH
+        if asteriod[i].y < 0:
+            asteriod[i].y = HEIGHT
+    for i in range(len(asteriod)-1, -1, -1):
+        deleteasteriod = False
+        for j in range(len(lasers) -1, -1, -1):
+            if asteriod[i].collidepoint(lasers[j].center):
+                points += 1
+                deleteasteriod = True
+                lasers.pop(j)
+                ldx.pop(j)
+                ldy.pop(j)
+                if asteriodlevel[i] > 1:
+                    for k in range(2):
+                        if asteriodlevel[i] == 3:
+                            asteriod.append( Actor('astreiod_medium'))
+                            asteriodlevel.append(2)
+                        elif asteriodlevel[i] == 2:
+                            asteriod.append( Actor('small') )
+                            asteriodlevel.append(1)
+                        bigdx.append(random.uniform(-.75,.75))
+                        bigdy.append(random.uniform(-.75,.75))
+                        ro.append(random.uniform(+.5, +1))
+                        end = len(asteriod)-1
+                        if random.randint(0,1)==0:
+                            ro[end] = -ro[end]
+                        asteriod[end].center = asteriod[i].center
+        if deleteasteriod:
+            asteriod.pop(i)
+            bigdx.pop(i)
+            bigdy.pop(i)
+            ro.pop(i)
+            asteriodlevel.pop(i)
+        
+    if ship.collidepoint(buff.center):
+        r = random.random()
+        if r <0.5:
+            buff.center = -100, -100
+            lives += 1
+        else:
+            rapid = True
+            clock.schedule_unique(disableRapid, 10.0)
+    if(rapid):
+        for i in range(100):
+            shoot()
+        rapid = False
+        
+def disableRapid():
+    global rapid
+    rapid = False
+def shoot():
+    laser = Actor('lightamplificationbystimulatedemissionofradiation')
+    laser.center = ship.center
+    lasers.append(laser)
+    shipDirectionX = math.cos((ship.angle + 90)*math.pi/180)
+    shipDirectionY = math.sin((ship.angle + 90)*math.pi/180)
+    laser.center = ship.center[0]+shipDirectionX*shipRadius, ship.center[1]+shipDirectionY*shipRadius
+    speed=5
+    ldx.append(shipDirectionX*speed+dx)
+    ldy.append(-shipDirectionY*speed+dy)          
+def on_mouse_down():
+    shoot()
+def on_key_down():
+    if keyboard.space:
+        shoot()
+pgzrun.go()
+
